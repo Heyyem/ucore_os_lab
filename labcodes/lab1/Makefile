@@ -45,15 +45,15 @@ endif
 
 # define compiler and flags
 ifndef  USELLVM
-HOSTCC		:= gcc
+HOSTCC		:= gcc-5
 HOSTCFLAGS	:= -g -Wall -O2
-CC		:= $(GCCPREFIX)gcc
+CC		:= $(GCCPREFIX)gcc-5
 CFLAGS	:= -fno-builtin -Wall -ggdb -m32 -gstabs -nostdinc $(DEFS)
 CFLAGS	+= $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 else
-HOSTCC		:= clang
+HOSTCC		:= clang-4.0
 HOSTCFLAGS	:= -g -Wall -O2
-CC		:= clang
+CC		:= clang-4.0
 CFLAGS	:= -fno-builtin -Wall -g -m32 -mno-sse -nostdinc $(DEFS)
 CFLAGS	+= $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 endif
@@ -218,12 +218,12 @@ qemu-nox: $(UCOREIMG)
 TERMINAL        :=gnome-terminal
 debug: $(UCOREIMG)
 	$(V)$(QEMU) -S -s -parallel stdio -hda $< -serial null &
-	$(V)sleep 2
-	$(V)$(TERMINAL) -e "gdb -q -tui -x tools/gdbinit"
+	$(V)sleep 1
+	$(V)$(TERMINAL) -e "gdb -q -x tools/gdbinit"
 	
 debug-nox: $(UCOREIMG)
 	$(V)$(QEMU) -S -s -serial mon:stdio -hda $< -nographic &
-	$(V)sleep 2
+	$(V)sleep 1
 	$(V)$(TERMINAL) -e "gdb -q -x tools/gdbinit"
 
 .PHONY: grade touch

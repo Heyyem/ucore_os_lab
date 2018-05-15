@@ -45,11 +45,11 @@ static struct segdesc gdt[] = {
     [SEG_KDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_KERNEL),
     [SEG_UTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_USER),
     [SEG_UDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_USER),
-    [SEG_TSS]    = SEG_NULL,
+    [SEG_TSS]   = SEG_NULL,
 };
 
 static struct pseudodesc gdt_pd = {
-    sizeof(gdt) - 1, (uint32_t)gdt
+    sizeof(gdt) - 1, (uintptr_t)gdt
 };
 
 /* *
@@ -96,4 +96,3 @@ void
 pmm_init(void) {
     gdt_init();
 }
-

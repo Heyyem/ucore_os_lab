@@ -11,6 +11,23 @@
 
 #define TICK_NUM 100
 
+static void
+switch_to_user(struct trapframe *tf) {
+    if ((tf->tf_cs & 3) == 3) return;
+    tf->tf_ds = tf->tf_es = tf->tf_fs = tf->tf_gs = tf->tf_ss = USER_DS;
+    tf->tf_cs = USER_CS;
+    tf->tf_eflags |= FL_IOPL_3;
+}
+
+static void
+switch_to_kernel(struct trapframe *tf) {
+    if ((tf->tf_cs & 3) == 0) return;
+    tf->tf_ds = tf->tf_es = tf->tf_fs = tf->tf_gs = tf->tf_ss = KERNEL_DS;
+    tf->tf_cs = KERNEL_CS;
+    tf->tf_eflags &= ~FL_IOPL_3;
+}
+
+
 static void print_ticks() {
     cprintf("%d ticks\n",TICK_NUM);
 #ifdef DEBUG_GRADE
@@ -26,7 +43,6 @@ static void print_ticks() {
  * be represented in relocation records.
  * */
 static struct gatedesc idt[256] = {{0}};
-
 static struct pseudodesc idt_pd = {
     sizeof(idt) - 1, (uintptr_t)idt
 };
@@ -46,6 +62,11 @@ idt_init(void) {
       *     You don't know the meaning of this instruction? just google it! and check the libs/x86.h to know more.
       *     Notice: the argument of lidt is idt_pd. try to find it!
       */
+  extern uintptr_t __vectors[];
+  for (size_t i = 0; i != sizeof idt / sizeof *idt; ++i)
+    SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
+  SETGATE(idt[T_SWITCH_TOK], 1, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);
+  lidt(&idt_pd);
 }
 
 static const char *
@@ -139,6 +160,8 @@ static void
 trap_dispatch(struct trapframe *tf) {
     char c;
 
+    extern volatile size_t ticks;
+
     switch (tf->tf_trapno) {
     case IRQ_OFFSET + IRQ_TIMER:
         /* LAB1 YOUR CODE : STEP 3 */
@@ -147,6 +170,10 @@ trap_dispatch(struct trapframe *tf) {
          * (2) Every TICK_NUM cycle, you can print some info using a funciton, such as print_ticks().
          * (3) Too Simple? Yes, I think so!
          */
+        if (++ticks == TICK_NUM) {
+            print_ticks();
+            ticks = 0;
+        }
         break;
     case IRQ_OFFSET + IRQ_COM1:
         c = cons_getc();
@@ -154,12 +181,24 @@ trap_dispatch(struct trapframe *tf) {
         break;
     case IRQ_OFFSET + IRQ_KBD:
         c = cons_getc();
+        switch (c) {
+            case '0':
+                switch_to_kernel(tf);
+                print_trapframe(tf);
+                break;
+            case '3':
+                switch_to_user(tf);
+                print_trapframe(tf);
+                break;
+        }
         cprintf("kbd [%03d] %c\n", c, c);
         break;
     //LAB1 CHALLENGE 1 : YOUR CODE you should modify below codes.
     case T_SWITCH_TOU:
+        switch_to_user(tf);
+        break;
     case T_SWITCH_TOK:
-        panic("T_SWITCH_** ??\n");
+        switch_to_kernel(tf);
         break;
     case IRQ_OFFSET + IRQ_IDE1:
     case IRQ_OFFSET + IRQ_IDE2:
@@ -184,4 +223,3 @@ trap(struct trapframe *tf) {
     // dispatch based on what type of trap occurred
     trap_dispatch(tf);
 }
-
